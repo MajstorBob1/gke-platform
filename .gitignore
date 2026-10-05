@@ -1,0 +1,13 @@
+# Terraform: providers, local state, and your real variable values
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+*.tfplan
+
+# never commit credentials
+*.json
+!renovate.json
+kubeconfig*

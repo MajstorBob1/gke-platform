@@ -1,0 +1,43 @@
+# Practice alerts for the shop. kube-prometheus-stack already ships ~150 generic
+# rules (KubePodCrashLooping, KubeNodeNotReady, ...); these are app-specific.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: otel-demo
+  namespace: monitoring
+spec:
+  groups:
+    - name: otel-demo.availability
+      rules:
+        - alert: ShopServiceDown
+          expr: kube_deployment_status_replicas_available{namespace="otel-demo"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.deployment }} has no available replicas"
+            description: "Every pod of otel-demo/{{ $labels.deployment }} is down or unready for 2 minutes."
+
+        - alert: ShopPodRestarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace="otel-demo"}[15m]) > 3
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.pod }} restarted {{ $value | humanize }} times in 15m"
+
+    - name: otel-demo.errors
+      rules:
+        # Built from span metrics that the collector derives from traces.
+        # EXERCISE: confirm the metric and label names in Grafana > Explore before
+        # trusting this alert. An alert on a metric that doesn't exist never fires.
+        - alert: ShopHighErrorRate
+          expr: |
+            sum by (job) (rate(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR"}[5m]))
+              /
+            sum by (job) (rate(traces_span_metrics_calls_total[5m]))
+              > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.job }}: {{ $value | humanizePercentage }} of spans are errors"

@@ -1,0 +1,46 @@
+# Used twice: by scripts/bootstrap-argocd.sh for the first install, then by
+# gitops/apps/argocd.yaml so ArgoCD manages its own upgrades from Git.
+global:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: system
+
+configs:
+  params:
+    server.insecure: false
+  cm:
+    # Dataplane V2 is Cilium-based and creates many CiliumIdentity objects;
+    # Argo CD docs recommend excluding them from the controller's cache.
+    resource.exclusions: |
+      - apiGroups: ["cilium.io"]
+        kinds: ["CiliumIdentity"]
+        clusters: ["*"]
+
+dex:
+  enabled: false # no SSO in this practice env; log in as admin
+
+notifications:
+  enabled: false
+
+controller:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+server:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi

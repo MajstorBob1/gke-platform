@@ -1,0 +1,19 @@
+# Routes all public traffic to the demo's Envoy edge proxy, which fans out to the
+# storefront, /loadgen, /feature (flag UI) and /jaeger/ui.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shop
+  namespace: otel-demo
+spec:
+  parentRefs:
+    - name: public
+      namespace: gateway-infra
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: frontend-proxy
+          port: 8080

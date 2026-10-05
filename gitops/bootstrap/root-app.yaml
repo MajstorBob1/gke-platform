@@ -1,0 +1,22 @@
+# The ONE thing applied by hand (scripts/bootstrap-argocd.sh).
+# Everything else is an Application in gitops/apps/, discovered from Git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io # deleting root cascades to all apps
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/MajstorBob1/gke-platform.git
+    targetRevision: main
+    path: gitops/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,6 @@
+project_id     = "gke-platform-123456"
+region         = "europe-west1"
+zone           = "europe-west1-b"
+cluster_name   = "platform-dev"
+admin_cidrs    = ["203.0.113.10/32"] # your public IP: curl -s https://ifconfig.me
+apps_max_nodes = 3

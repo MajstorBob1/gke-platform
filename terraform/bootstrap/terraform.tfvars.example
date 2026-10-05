@@ -1,0 +1,5 @@
+project_id         = "gke-platform-123456"
+region             = "europe-west1"
+billing_account_id = "000000-000000-000000" # gcloud billing accounts list
+budget_currency    = "USD"                  # must match your billing account
+monthly_budget     = 100

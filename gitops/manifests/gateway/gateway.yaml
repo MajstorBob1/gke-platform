@@ -1,0 +1,24 @@
+# Gateway API: GKE's controller turns this into a global external Application
+# Load Balancer, using the static IP reserved by Terraform.
+# Platform team owns the Gateway; app teams attach HTTPRoutes from namespaces
+# labelled gateway-access=true.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: public
+  namespace: gateway-infra
+spec:
+  gatewayClassName: gke-l7-global-external-managed
+  addresses:
+    - type: NamedAddress
+      value: platform-dev-gateway-ip # replaced by scripts/configure-gitops.sh
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              gateway-access: "true"

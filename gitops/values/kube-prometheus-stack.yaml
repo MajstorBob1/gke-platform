@@ -1,0 +1,106 @@
+# Prometheus + Alertmanager + Grafana + kube-state-metrics + node-exporter.
+fullnameOverride: kps
+
+# GKE runs the control plane for us: these targets can't be scraped, so their
+# scrape configs and alerts would only produce false "target down" alarms.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false # Dataplane V2 replaces kube-proxy with eBPF
+
+# GKE runs kube-dns, not CoreDNS: scrape the right one.
+coreDns:
+  enabled: false
+kubeDns:
+  enabled: true
+
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+
+prometheusOperator:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: system
+
+prometheus:
+  prometheusSpec:
+    # Receive OTLP metrics pushed by the OpenTelemetry Collector (http://kps-prometheus:9090/api/v1/otlp).
+    enableOTLPReceiver: true
+    # Pick up ServiceMonitors/PodMonitors/PrometheusRules from every namespace,
+    # not only the ones labelled for this Helm release.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    retention: 3d
+    retentionSize: 8GB
+    nodeSelector:
+      cloud.google.com/gke-nodepool: system
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard # pd-standard: doesn't use the trial's SSD quota
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  alertmanagerSpec:
+    nodeSelector:
+      cloud.google.com/gke-nodepool: system
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+grafana:
+  # The admin password lives in a Secret created by scripts/bootstrap-argocd.sh,
+  # never in Git.
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  nodeSelector:
+    cloud.google.com/gke-nodepool: system
+  defaultDashboardsTimezone: browser
+  persistence:
+    enabled: false # dashboards and datasources are code; nothing to lose
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki-gateway.monitoring.svc.cluster.local
+      jsonData:
+        maxLines: 1000
+    - name: Jaeger
+      uid: jaeger
+      type: jaeger
+      access: proxy
+      url: http://jaeger.otel-demo.svc.cluster.local:16686/jaeger/ui
+
+kube-state-metrics:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: system

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway-infra
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false # removing the app must not wipe the namespace
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: otel-demo
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false
+  labels:
+    gateway-access: "true" # allowed to attach HTTPRoutes to the public Gateway

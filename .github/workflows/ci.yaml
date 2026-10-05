@@ -1,0 +1,60 @@
+# Runs on every pull request: nothing reaches main (and therefore ArgoCD)
+# unless Terraform and every Kubernetes manifest pass these checks.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.5
+
+      - name: fmt
+        run: terraform fmt -check -recursive -diff terraform
+
+      - name: validate
+        run: |
+          for dir in terraform/bootstrap terraform/envs/dev; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+      - uses: terraform-linters/setup-tflint@v6
+
+      - name: tflint
+        run: |
+          tflint --init
+          tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl"
+
+      - name: trivy (misconfigurations, report only)
+        run: |
+          docker run --rm -v "$PWD:/src" aquasec/trivy:latest config \
+            --severity HIGH,CRITICAL --exit-code 0 /src/terraform
+
+  kubernetes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+
+      - name: install kubeconform
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz \
+            | sudo tar xz -C /usr/local/bin kubeconform
+
+      - name: render charts and validate manifests
+        run: ./scripts/render.sh   # yq is preinstalled on GitHub's Ubuntu runners

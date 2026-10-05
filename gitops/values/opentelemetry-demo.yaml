@@ -1,0 +1,36 @@
+# OpenTelemetry Demo ("Astronomy Shop"): ~20 microservices in 10+ languages.
+#
+# Telemetry flow, using the PLATFORM's observability stack instead of the demo's own:
+#   services --OTLP--> otel-collector --+--> traces  -> Jaeger (bundled with the demo)
+#                                       +--> metrics -> Prometheus (kps, OTLP receiver)
+#                                       +--> logs    -> Loki (OTLP endpoint)
+
+default:
+  schedulingRules:
+    nodeSelector:
+      cloud.google.com/gke-nodepool: apps # the Spot pool
+
+# Bundled backends we replace with the platform's.
+prometheus:
+  enabled: false
+grafana:
+  enabled: false
+opensearch:
+  enabled: false
+
+jaeger:
+  enabled: true
+
+opentelemetry-collector:
+  config:
+    exporters:
+      otlp_http/prometheus:
+        endpoint: http://kps-prometheus.monitoring.svc.cluster.local:9090/api/v1/otlp
+      otlp_http/loki:
+        endpoint: http://loki-gateway.monitoring.svc.cluster.local/otlp
+        tls:
+          insecure: true
+    service:
+      pipelines:
+        logs:
+          exporters: [otlp_http/loki, debug]

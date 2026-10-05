@@ -1,0 +1,30 @@
+# ArgoCD manages its own Helm release: upgrading ArgoCD = bumping targetRevision in a PR.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      targetRevision: 10.9.6
+      helm:
+        releaseName: argocd
+        valueFiles:
+          - $values/gitops/values/argocd.yaml
+    - repoURL: https://github.com/MajstorBob1/gke-platform.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false # never let a bad commit delete ArgoCD itself
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
