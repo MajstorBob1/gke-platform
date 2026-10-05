@@ -29,6 +29,10 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # ConfigMap "agent-fixtures" is >256 KB. Client-side apply copies the whole
+      # object into the last-applied-configuration annotation, which is capped at
+      # 256 KB, so the API server rejects it. Server-side apply stores no such copy.
+      - ServerSideApply=true
     retry:
       limit: 5
       backoff:
